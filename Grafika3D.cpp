@@ -5,9 +5,9 @@
 typedef sf::Event    sfe;
 typedef sf::Keyboard sfk;
 
-static float g_R = 2.6f;   // zoom (odleg³oœæ kamery)
-static float g_theta = 44.0f;  // elewacja [deg]
-static float g_phi = 25.0f;  // azymut [deg]
+static float g_R = 2.6f;  
+static float g_theta = 44.0f; 
+static float g_phi = 25.0f; 
 
 static unsigned g_width = 1024;
 static unsigned g_height = 768;
@@ -63,7 +63,7 @@ static void setupProjection(unsigned w, unsigned h)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     const float aspect = (h == 0) ? 1.f : (float)w / (float)h;
-    perspectiveGL(60.0, aspect, 0.1, 100.0); // zamiast gluPerspective
+    perspectiveGL(60.0, aspect, 0.1, 100.0);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -77,7 +77,7 @@ static void setupGL()
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
-    glClearColor(0.95f, 0.97f, 0.99f, 1.0f); // jasne t³o jak na zdjêciu
+    glClearColor(0.95f, 0.97f, 0.99f, 1.0f);
 }
 
 static void drawAxes(float lenPos = 2.0f, float lenNeg = 2.0f)
@@ -158,7 +158,7 @@ static void renderScene()
     const float y = g_R * cosf(th);
     const float z = g_R * sinf(th) * sinf(ph);
 
-    lookAtGL(x, y, z, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f); // zamiast gluLookAt
+    lookAtGL(x, y, z, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f); 
 
     drawAxes();
     drawCubeWire();
@@ -167,7 +167,7 @@ static void renderScene()
 
 int main()
 {
-    sf::ContextSettings ctx(24); // 24-bit depth buffer
+    sf::ContextSettings ctx(24); 
     sf::RenderWindow window(sf::VideoMode(g_width, g_height), "Grafika 3D", sf::Style::Default, ctx);
     window.setVerticalSyncEnabled(true);
 
