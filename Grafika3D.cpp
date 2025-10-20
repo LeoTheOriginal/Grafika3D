@@ -4,9 +4,10 @@ typedef sf::Event    sfe;
 typedef sf::Keyboard sfk;
 
 // Parametry kamery
-static float g_R = 2.6f;
-static float g_theta = 44.0f;
-static float g_phi = 25.0f;
+static float g_R = 6.0f;
+static float g_theta = 90.0f;
+static float g_phi = 90.0f;
+static bool g_orthographic = false;  // false = perspektywa, true = ortogonalna
 
 // Parametry transformacji sceny
 static float g_scaleX = 1.0f;
@@ -73,7 +74,31 @@ static void setupProjection(unsigned w, unsigned h)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     const float aspect = (h == 0) ? 1.f : (float)w / (float)h;
-    perspectiveGL(60.0, aspect, 0.1, 100.0);
+
+    if (g_orthographic)
+    {
+        // Projekcja ortogonalna
+        const float orthoSize = 2.5f;  // rozmiar widoku ortogonalnego
+        if (aspect >= 1.0f)
+        {
+            // Szerszy ekran (landscape)
+            glOrtho(-orthoSize * aspect, orthoSize * aspect,
+                -orthoSize, orthoSize,
+                0.1, 100.0);
+        }
+        else
+        {
+            // Wy¿szy ekran (portrait)
+            glOrtho(-orthoSize, orthoSize,
+                -orthoSize / aspect, orthoSize / aspect,
+                0.1, 100.0);
+        }
+    }
+    else
+    {
+        // Projekcja perspektywiczna (domyœlna)
+        perspectiveGL(60.0, aspect, 0.1, 100.0);
+    }
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -286,6 +311,20 @@ int main()
         ImGui::SliderFloat("R", &g_R, 1.0f, 6.0f, "%.3f");
         ImGui::SliderFloat("theta", &g_theta, 0.0f, 89.9f, "%.0f deg");
         ImGui::SliderFloat("phi", &g_phi, 0.0f, 360.0f, "%.0f deg");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Checkbox do prze³¹czania projekcji
+        bool projectionChanged = ImGui::Checkbox("Orthographic Projection", &g_orthographic);
+
+        // Jeœli projekcja siê zmieni³a, zaktualizuj macierz projekcji
+        if (projectionChanged)
+        {
+            setupProjection(g_width, g_height);
+        }
+
         ImGui::End();
 
         // Okno transformacji sceny
