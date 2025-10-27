@@ -490,7 +490,12 @@ static void renderScene()
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    const float th = deg2rad(g_theta);
+    // Zabezpieczenie przed problemem z theta = 0 lub 180 (gimbal lock)
+    float theta_clamped = g_theta;
+    if (theta_clamped < 0.1f) theta_clamped = 0.1f;
+    if (theta_clamped > 179.9f) theta_clamped = 179.9f;
+
+    const float th = deg2rad(theta_clamped);
     const float ph = deg2rad(g_phi);
     const float x = g_R * sinf(th) * cosf(ph);
     const float y = g_R * cosf(th);
@@ -586,7 +591,8 @@ int main()
         // Okno kontroli kamery
         ImGui::Begin("Camera");
         ImGui::SliderFloat("R", &g_R, 1.0f, 10.0f, "%.3f");
-        ImGui::SliderFloat("theta", &g_theta, 0.0f, 89.9f, "%.0f deg");
+        // theta nie mo¿e byæ 0 lub 180 (gimbal lock - wektor up równoleg³y do kierunku patrzenia)
+        ImGui::SliderFloat("theta", &g_theta, 0.1f, 89.9f, "%.0f deg");
         ImGui::SliderFloat("phi", &g_phi, 0.0f, 360.0f, "%.0f deg");
 
         ImGui::Spacing();
