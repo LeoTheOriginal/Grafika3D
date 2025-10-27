@@ -29,6 +29,15 @@ static bool g_showCube = true;
 static bool g_showCone = true;
 static bool g_showSphere = true;
 
+// Parametry oœwietlenia
+static bool g_lightingEnabled = true;
+static float g_lightPosX = 2.0f;
+static float g_lightPosY = 3.0f;
+static float g_lightPosZ = 2.0f;
+static float g_ambientStrength = 0.3f;
+static float g_diffuseStrength = 0.8f;
+static float g_specularStrength = 1.0f;
+
 static unsigned g_width = 1024;
 static unsigned g_height = 768;
 
@@ -108,6 +117,68 @@ static void setupProjection(unsigned w, unsigned h)
     glLoadIdentity();
 }
 
+static void setupLighting()
+{
+    if (g_lightingEnabled)
+    {
+        // W³¹cz oœwietlenie
+        glEnable(GL_LIGHTING);
+        glEnable(GL_LIGHT0);
+
+        // W³¹cz normalizacjê wektorów normalnych (wa¿ne przy skalowaniu)
+        glEnable(GL_NORMALIZE);
+
+        // W³¹cz œledzenie koloru materia³u
+        glEnable(GL_COLOR_MATERIAL);
+        glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+        // Pozycja œwiat³a (w przestrzeni œwiata)
+        GLfloat lightPos[] = { g_lightPosX, g_lightPosY, g_lightPosZ, 1.0f };
+
+        // Kolor ambient (œwiat³o otoczenia)
+        GLfloat lightAmbient[] = {
+            g_ambientStrength,
+            g_ambientStrength,
+            g_ambientStrength,
+            1.0f
+        };
+
+        // Kolor diffuse (œwiat³o rozproszone)
+        GLfloat lightDiffuse[] = {
+            g_diffuseStrength,
+            g_diffuseStrength,
+            g_diffuseStrength,
+            1.0f
+        };
+
+        // Kolor specular (œwiat³o odbite/b³ysk)
+        GLfloat lightSpecular[] = {
+            g_specularStrength,
+            g_specularStrength,
+            g_specularStrength,
+            1.0f
+        };
+
+        glLightfv(GL_LIGHT0, GL_POSITION, lightPos);
+        glLightfv(GL_LIGHT0, GL_AMBIENT, lightAmbient);
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
+        glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
+
+        // W³aœciwoœci materia³u dla efektów specular
+        GLfloat matSpecular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
+        GLfloat matShininess[] = { 50.0f };
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, matSpecular);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, matShininess);
+    }
+    else
+    {
+        glDisable(GL_LIGHTING);
+        glDisable(GL_LIGHT0);
+        glDisable(GL_NORMALIZE);
+        glDisable(GL_COLOR_MATERIAL);
+    }
+}
+
 static void setupGL()
 {
     glEnable(GL_DEPTH_TEST);
@@ -127,10 +198,15 @@ static void setupGL()
     glClearColor(0.95f, 0.97f, 0.99f, 1.0f);
 
     glShadeModel(GL_SMOOTH);
+
+    // Pocz¹tkowa konfiguracja oœwietlenia
+    setupLighting();
 }
 
 static void drawAxes(float lenPos = 2.0f, float lenNeg = 2.0f)
 {
+    // Wy³¹czamy oœwietlenie dla osi
+    glDisable(GL_LIGHTING);
     glDisable(GL_DEPTH_TEST);
 
     glLineWidth(1.5f);
@@ -152,10 +228,19 @@ static void drawAxes(float lenPos = 2.0f, float lenNeg = 2.0f)
     glLineWidth(1.0f);
 
     glEnable(GL_DEPTH_TEST);
+
+    // Przywracamy oœwietlenie jeœli by³o w³¹czone
+    if (g_lightingEnabled)
+    {
+        glEnable(GL_LIGHTING);
+    }
 }
 
 static void drawCubeWire(float s = 1.2f)
 {
+    // Wy³¹czamy oœwietlenie dla konturów
+    glDisable(GL_LIGHTING);
+
     const float a = s * 0.5f;
 
     glEnable(GL_POLYGON_OFFSET_LINE);
@@ -185,6 +270,12 @@ static void drawCubeWire(float s = 1.2f)
     glLineWidth(1.0f);
 
     glDisable(GL_POLYGON_OFFSET_LINE);
+
+    // Przywracamy oœwietlenie
+    if (g_lightingEnabled)
+    {
+        glEnable(GL_LIGHTING);
+    }
 }
 
 static void drawInternalTriangle(float s = 1.2f)
@@ -197,28 +288,42 @@ static void drawInternalTriangle(float s = 1.2f)
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
 
+    // Obliczenie wektora normalnego dla trójk¹ta
+    float edge1[3] = { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
+    float edge2[3] = { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
+
+    // Iloczyn wektorowy (cross product)
+    float normal[3];
+    normal[0] = edge1[1] * edge2[2] - edge1[2] * edge2[1];
+    normal[1] = edge1[2] * edge2[0] - edge1[0] * edge2[2];
+    normal[2] = edge1[0] * edge2[1] - edge1[1] * edge2[0];
+
+    // Normalizacja
+    float len = sqrtf(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+    normal[0] /= len;
+    normal[1] /= len;
+    normal[2] /= len;
+
     glBegin(GL_TRIANGLES);
+    glNormal3fv(normal);  // Ustawiamy normaln¹ dla ca³ego trójk¹ta
     glColor3f(1.f, 0.f, 0.f); glVertex3fv(v1);
     glColor3f(0.f, 1.f, 0.f); glVertex3fv(v2);
     glColor3f(0.f, 0.f, 1.f); glVertex3fv(v3);
     glEnd();
 }
 
-// Rysowanie sto¿ka
+// Rysowanie sto¿ka z normalnymi
 static void drawCone(float radius = 0.4f, float height = 0.8f, int segments = 32)
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
 
-    // Wierzcho³ek sto¿ka
     const float apex_x = 0.0f;
     const float apex_y = height / 2.0f;
     const float apex_z = 0.0f;
-
-    // Œrodek podstawy
     const float base_y = -height / 2.0f;
 
-    // Rysowanie œcian bocznych sto¿ka - ZIELONY gradient
+    // Rysowanie œcian bocznych sto¿ka
     glBegin(GL_TRIANGLES);
     for (int i = 0; i < segments; i++)
     {
@@ -230,15 +335,30 @@ static void drawCone(float radius = 0.4f, float height = 0.8f, int segments = 32
         float x2 = radius * cosf(angle2);
         float z2 = radius * sinf(angle2);
 
-        // Kolor gradientowy - ró¿ne odcienie zieleni
+        // Obliczanie normalnych dla ka¿dego trójk¹ta
+        float v1[3] = { apex_x, apex_y, apex_z };
+        float v2[3] = { x1, base_y, z1 };
+        float v3[3] = { x2, base_y, z2 };
+
+        float edge1[3] = { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
+        float edge2[3] = { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
+
+        float normal[3];
+        normal[0] = edge1[1] * edge2[2] - edge1[2] * edge2[1];
+        normal[1] = edge1[2] * edge2[0] - edge1[0] * edge2[2];
+        normal[2] = edge1[0] * edge2[1] - edge1[1] * edge2[0];
+
+        float len = sqrtf(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+        normal[0] /= len; normal[1] /= len; normal[2] /= len;
+
         float t1 = (float)i / segments;
         float t2 = (float)(i + 1) / segments;
 
-        // Wierzcho³ek - jasna zieleñ
+        glNormal3fv(normal);
+
         glColor3f(0.3f, 1.0f, 0.3f);
         glVertex3f(apex_x, apex_y, apex_z);
 
-        // Podstawa - gradient zieleni
         glColor3f(0.0f, 0.7f + 0.3f * (1.0f - t1), 0.0f);
         glVertex3f(x1, base_y, z1);
 
@@ -247,10 +367,11 @@ static void drawCone(float radius = 0.4f, float height = 0.8f, int segments = 32
     }
     glEnd();
 
-    // Rysowanie podstawy sto¿ka - ciemnozielona
+    // Rysowanie podstawy sto¿ka
     glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0.0f, -1.0f, 0.0f);  // Normalna skierowana w dó³
     glColor3f(0.0f, 0.5f, 0.0f);
-    glVertex3f(0.0f, base_y, 0.0f);  // œrodek podstawy
+    glVertex3f(0.0f, base_y, 0.0f);
     for (int i = 0; i <= segments; i++)
     {
         float angle = (float)i / segments * 2.0f * 3.14159265f;
@@ -261,7 +382,7 @@ static void drawCone(float radius = 0.4f, float height = 0.8f, int segments = 32
     glEnd();
 }
 
-// Rysowanie sfery (kuli)
+// Rysowanie sfery z normalnymi
 static void drawSphere(float radius = 0.4f, int slices = 32, int stacks = 16)
 {
     glEnable(GL_DEPTH_TEST);
@@ -286,18 +407,75 @@ static void drawSphere(float radius = 0.4f, int slices = 32, int stacks = 16)
             float x2 = r2 * cosf(lng);
             float z2 = r2 * sinf(lng);
 
-            // Kolor czerwony z gradientem jasnoœci od góry do do³u
+            // Dla sfery, normalna w ka¿dym punkcie to znormalizowany wektor pozycji
+            float nx1 = x1 / radius;
+            float ny1 = y1 / radius;
+            float nz1 = z1 / radius;
+
+            float nx2 = x2 / radius;
+            float ny2 = y2 / radius;
+            float nz2 = z2 / radius;
+
             float t1 = (float)i / stacks;
             float t2 = (float)(i + 1) / stacks;
 
-            // Gradient od jasnoczerwonego (góra) do ciemnoczerwonego (dó³)
+            glNormal3f(nx1, ny1, nz1);
             glColor3f(1.0f, 0.3f * (1.0f - t1), 0.3f * (1.0f - t1));
             glVertex3f(x1, y1, z1);
 
+            glNormal3f(nx2, ny2, nz2);
             glColor3f(1.0f, 0.3f * (1.0f - t2), 0.3f * (1.0f - t2));
             glVertex3f(x2, y2, z2);
         }
         glEnd();
+    }
+}
+
+// Rysowanie ma³ej kuli reprezentuj¹cej pozycjê œwiat³a
+static void drawLightMarker()
+{
+    glDisable(GL_LIGHTING);  // Marker sam siê œwieci
+
+    glPushMatrix();
+    glTranslatef(g_lightPosX, g_lightPosY, g_lightPosZ);
+
+    // Rysujemy ma³¹ ¿ó³t¹ kulkê
+    const float r = 0.1f;
+    const int slices = 16;
+    const int stacks = 8;
+
+    glColor3f(1.0f, 1.0f, 0.0f);  // ¯ó³ty kolor
+
+    for (int i = 0; i < stacks; i++)
+    {
+        float lat1 = 3.14159265f * (-0.5f + (float)i / stacks);
+        float lat2 = 3.14159265f * (-0.5f + (float)(i + 1) / stacks);
+
+        float y1 = r * sinf(lat1);
+        float y2 = r * sinf(lat2);
+        float r1 = r * cosf(lat1);
+        float r2 = r * cosf(lat2);
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for (int j = 0; j <= slices; j++)
+        {
+            float lng = 2.0f * 3.14159265f * (float)j / slices;
+            float x1 = r1 * cosf(lng);
+            float z1 = r1 * sinf(lng);
+            float x2 = r2 * cosf(lng);
+            float z2 = r2 * sinf(lng);
+
+            glVertex3f(x1, y1, z1);
+            glVertex3f(x2, y2, z2);
+        }
+        glEnd();
+    }
+
+    glPopMatrix();
+
+    if (g_lightingEnabled)
+    {
+        glEnable(GL_LIGHTING);
     }
 }
 
@@ -320,6 +498,9 @@ static void renderScene()
 
     lookAtGL(x, y, z, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f);
 
+    // Aktualizacja oœwietlenia (pozycja œwiat³a musi byæ ustawiona po ustawieniu kamery)
+    setupLighting();
+
     glPushMatrix();
 
     glTranslatef(g_posX, g_posY, g_posZ);
@@ -328,7 +509,6 @@ static void renderScene()
     glRotatef(g_rotZ, 0.0f, 0.0f, 1.0f);
     glScalef(g_scaleX, g_scaleY, g_scaleZ);
 
-    // Rysowanie obiektów w zale¿noœci od ustawieñ widocznoœci
     if (g_showTriangle)
     {
         drawInternalTriangle();
@@ -342,7 +522,7 @@ static void renderScene()
     if (g_showCone)
     {
         glPushMatrix();
-        glTranslatef(-0.9f, 0.0f, 0.0f); 
+        glTranslatef(-0.9f, 0.0f, 0.0f);
         drawCone();
         glPopMatrix();
     }
@@ -350,12 +530,18 @@ static void renderScene()
     if (g_showSphere)
     {
         glPushMatrix();
-        glTranslatef(1.2f, 0.0f, 0.0f);  
+        glTranslatef(1.2f, 0.0f, 0.0f);
         drawSphere();
         glPopMatrix();
     }
 
     glPopMatrix();
+
+    // Rysujemy marker pozycji œwiat³a
+    if (g_lightingEnabled)
+    {
+        drawLightMarker();
+    }
 
     drawAxes();
 }
@@ -366,7 +552,7 @@ int main()
 
     sf::RenderWindow window(
         sf::VideoMode(g_width, g_height),
-        "Grafika 3D - Sto¿ek i Kula",
+        "Grafika 3D - Oœwietlenie",
         sf::Style::Default,
         ctx
     );
@@ -448,6 +634,72 @@ int main()
         if (projectionChanged)
         {
             setupProjection(g_width, g_height);
+        }
+
+        ImGui::End();
+
+        // NOWE OKNO: Lighting Control
+        ImGui::Begin("Lighting");
+
+        if (ImGui::Checkbox("Enable Lighting", &g_lightingEnabled))
+        {
+            setupLighting();
+        }
+
+        if (g_lightingEnabled)
+        {
+            ImGui::Spacing();
+            ImGui::Text("Light Position:");
+            ImGui::SliderFloat("Light X", &g_lightPosX, -5.0f, 5.0f, "%.2f");
+            ImGui::SliderFloat("Light Y", &g_lightPosY, -5.0f, 5.0f, "%.2f");
+            ImGui::SliderFloat("Light Z", &g_lightPosZ, -5.0f, 5.0f, "%.2f");
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            ImGui::Text("Light Intensity:");
+            ImGui::SliderFloat("Ambient", &g_ambientStrength, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Diffuse", &g_diffuseStrength, 0.0f, 1.0f, "%.2f");
+            ImGui::SliderFloat("Specular", &g_specularStrength, 0.0f, 2.0f, "%.2f");
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            ImGui::Text("Quick Presets:");
+            if (ImGui::Button("Bright"))
+            {
+                g_ambientStrength = 0.5f;
+                g_diffuseStrength = 1.0f;
+                g_specularStrength = 1.5f;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Normal"))
+            {
+                g_ambientStrength = 0.3f;
+                g_diffuseStrength = 0.8f;
+                g_specularStrength = 1.0f;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Dim"))
+            {
+                g_ambientStrength = 0.1f;
+                g_diffuseStrength = 0.5f;
+                g_specularStrength = 0.3f;
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Reset Light Position"))
+            {
+                g_lightPosX = 2.0f;
+                g_lightPosY = 3.0f;
+                g_lightPosZ = 2.0f;
+            }
+        }
+        else
+        {
+            ImGui::TextDisabled("Lighting is disabled");
         }
 
         ImGui::End();
